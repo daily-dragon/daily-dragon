@@ -1,4 +1,5 @@
 import './App.css'
+import '@aws-amplify/ui-react/styles.css';
 import {Route, Routes} from 'react-router-dom'
 import Practice from "./components/practice/Practice.jsx";
 import VocabularyPage from "./components/vocabulary/VocabularyPage.jsx";
