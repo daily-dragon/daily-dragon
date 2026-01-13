@@ -1,16 +1,47 @@
-# daily-dragon
+# Daily Dragon
 
-## Local Development
-### Install dependencies
-```bash
-pip install -r requirements.txt
-```
-### Run tests with coverage
-```bash
-pytest --cov=.
-```
+**Daily Dragon** is a language-learning project focused on daily translation practice.
 
-### Run app locally
-```bash
-uvicorn daily_dragon.daily_dragon_app:app --reload
-```
+Instead of fixed exercises, it **dynamically generates sentences for translation** based on a user’s personal vocabulary.  
+This prevents memorization and encourages real language production.
+
+---
+
+## Problem it solves
+
+Problem: Most language apps reuse the same examples, which users quickly memorize.
+
+Daily Dragon:
+- generates new sentences every time
+- reuses known words in new combinations
+- supports short, daily practice sessions
+
+The focus is **active translation**, not passive recognition.
+
+---
+
+## UI
+
+**Repository:** [https://github.com/daily-dragon/daily-dragon-ui](https://github.com/daily-dragon/daily-dragon-ui)
+
+The actual user-facing website that allows to work with the APIs.
+
+Technology stack:
+- React
+- AWS Amplify
+- Amazon Cognito
+
+---
+
+## Vocabulary API
+
+**Repository:** [https://github.com/daily-dragon/daily-dragon-vocabulary-api](https://github.com/daily-dragon/daily-dragon-vocabulary-api)
+
+Responsible for:
+- working with user's vocabulary
+
+Technology stack:
+- AWS Lambda
+- API Gateway
+- S3
+- Python

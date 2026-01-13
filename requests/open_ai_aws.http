@@ -1,7 +1,0 @@
-### Get sentences for practice
-POST https://c0ouez95i5.execute-api.us-west-2.amazonaws.com/daily-dragon/openai
-Content-Type: application/json
-
-{
-  "prompt": "take these words: [\"变化\",\"你好\",\"搞错\",\"现在\",\"新增\"], create 5 sentences with them in English. return the English sentences only and enclose the corresponding English word in triangular brackets. Return ONLY a JSON array of strings like this: ['Please, pass me that <english_word>.', ... ]"
-}
