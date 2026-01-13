@@ -38,6 +38,7 @@ function AddWordDialogContent({word, setWord, loading, setLoading}) {
                     placeholder="Enter new word"
                     value={word}
                     onChange={e => setWord(e.target.value)}
+                    maxLength={256}
                 />
             </Dialog.Body>
             <Dialog.Footer>

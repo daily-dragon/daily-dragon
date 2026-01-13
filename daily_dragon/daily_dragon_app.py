@@ -4,7 +4,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, Response, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from daily_dragon.auth.authenticate import authenticate
 from daily_dragon.exceptions import WordAlreadyExistsError
@@ -28,7 +28,7 @@ app.add_middleware(CORSMiddleware,
 
 
 class WordEntry(BaseModel):
-    word: str
+    word: str = Field(max_length=256)
 
 
 @app.post("/daily-dragon/vocabulary", status_code=201)
