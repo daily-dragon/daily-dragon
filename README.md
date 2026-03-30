@@ -45,3 +45,20 @@ Technology stack:
 - API Gateway
 - S3
 - Python
+- FastAPI
+
+---
+
+## OpenAI API
+
+**Repository:** [https://github.com/daily-dragon/daily-dragon-openai-api](https://github.com/daily-dragon/daily-dragon-openai-api)
+
+Responsible for:
+- generating sentences for translation
+- checking user translations
+
+Technology stack:
+- AWS Lambda
+- API Gateway
+- FastAPI
+- OpenAI API
