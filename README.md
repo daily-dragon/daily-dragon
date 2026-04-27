@@ -162,6 +162,9 @@ Architecture diagrams are maintained in the [`/diagrams`](./diagrams) directory 
 
 ## Roadmap
 
-- [ ] Spaced repetition scheduling
-- [ ] Multi-language support
-- [ ] Progress tracking & streaks
+- [ ] **Hints system** — a "?" button next to each sentence that reveals a contextual hint (e.g. *"uses the word for 'to run'"*) rather than giving away the answer directly
+- [ ] **Sentence type variety** — intentionally vary generated sentences across questions, negations, past/future tense, and other structures to broaden grammar practice
+- [ ] **Usage analytics & admin view** — a page showing vocabulary grouped by user knowledge level, session frequency, and accuracy trends over time
+- [ ] **Progress tracking & streaks** — daily streak counter, session history, and words-mastered count to support habit formation
+- [ ] **Migrate vocabulary storage to a database** — replace per-user S3 files with a proper DB (e.g. DynamoDB) to enable querying, spaced repetition, and user settings storage
+- [ ] **Multi-language support** — allow users to practice translation into languages other than their first; mainly a vocabulary API and prompt concern
