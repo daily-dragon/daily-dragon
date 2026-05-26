@@ -1,6 +1,6 @@
 # HSK Progression & Automatic Advancement — Migration Plan
 
-> **Status:** Planned  
+> **Status:** Phase 0 complete — Phase 1 in progress  
 > **Scope:** `daily-dragon-vocabulary-api`, `daily-dragon-openai-api`, `daily-dragon-ui`  
 > **Replaces:** Manual vocabulary management (add word / remove word)
 
@@ -62,7 +62,7 @@ A word is considered **mastered** when its SRS `interval` reaches **>=21 days** 
 tNew users are shown a quick binary placement test (know it / don't know it) across a sample of words from each HSK level. This sets their starting level correctly and avoids wasting time on material they already know.
 
 ### HSK data is shared and static
-HSK word lists are stored as **9 separate read-only JSON files in S3** (`hsk-data/hsk1.json` ... `hsk-data/hsk9.json`), shared across all users. They are never modified at runtime.
+HSK word lists are stored as **7 separate read-only JSON files in S3** (`hsk/hsk1.json` ... `hsk/hsk7.json`), shared across all users. They are never modified at runtime. Levels 8 and 9 share the same word list as level 7 and are therefore not stored separately. Each file is a plain JSON array of hanzi strings — pinyin and English meanings are not included in the source data and will be looked up at runtime if needed.
 
 ### User settings stored like vocabulary
 User-level preferences (current HSK level, placement test status) are stored in a per-user settings JSON file in S3 — following the same pattern already used for vocabulary files.
@@ -97,7 +97,7 @@ The add word / remove word workflow is fully removed. The vocabulary page is rep
 | HSK seeding & progression service | `vocabulary-api` |
 | `hsk_level` + `source` fields on word entries | vocabulary S3 files |
 | `{user_id}_settings.json` in S3 | S3 vocabulary bucket |
-| Static `hsk-data/hsk1.json` ... `hsk9.json` in S3 | S3 (shared, read-only) |
+| Static `hsk/hsk1.json` ... `hsk7.json` in S3 | S3 (shared, read-only) |
 | `hsk_level` field in sentence generation request | `openai-api` |
 | `ProgressPage` | `daily-dragon-ui` |
 | `PlacementTestPage` | `daily-dragon-ui` |
@@ -122,7 +122,7 @@ The add word / remove word workflow is fully removed. The vocabulary page is rep
 | Decision | Choice | Rationale |
 |---|---|---|
 | HSK standard | New HSK (2021), levels 1-9 | Future-proof; more granular than old 1-6 |
-| HSK storage | 9 separate S3 JSON files under `hsk-data/` | Independent versioning per level; lazy loading; mirrors existing patterns |
+| HSK storage | 7 S3 JSON files under `hsk/` in `daily-dragon-bucket` | Levels 8-9 share level 7's word list; each file contains only words unique to that level; lazy loading; mirrors existing patterns |
 | User vocabulary | Same JSON structure + `hsk_level` + `source` fields | Zero-migration risk; existing SRS fields untouched |
 | User settings | `{user_id}_settings.json` in same S3 bucket | Consistent with vocabulary storage pattern |
 | Mastery threshold | `interval >= 21 days` | SM-27 definition of a mature card; proven long-term retention signal |
@@ -138,16 +138,24 @@ The add word / remove word workflow is fully removed. The vocabulary page is rep
 
 ---
 
-### Phase 0 -- HSK Data Preparation
-> **~1-2 days | No code changes to any service**
+### ✅ Phase 0 -- HSK Data Preparation
+> **COMPLETE | No code changes to any service**
 
-- Source the New HSK (2021) word lists for all 9 levels
-- Each entry format: `{ "hanzi": "你好", "pinyin": "ni\u01d0 h\u01ceo", "meaning": "hello", "hsk_level": 1 }`
-- Format as 9 JSON files: `hsk1.json` through `hsk9.json`
-- Upload to S3 under shared `hsk-data/` prefix (not user-scoped, never modified at runtime)
-- These files become the ground truth the backend seeds from
+- Sourced New HSK (2021) word lists for levels 1-7
+  - Complete word lists were difficult to obtain online; this was the main effort of this phase
+  - Levels 8 and 9 share the same vocabulary as level 7, so no separate files were created
+  - Each file contains **only the words unique to that level** — lists are not cumulative
+- Each file is a plain JSON array of hanzi strings:
+  ```
+  ["一", "一下", "一些", "一半", "一点儿", "七", ...]
+  ```
+- 7 files uploaded: `hsk1.json` through `hsk7.json`
+- S3 location: `s3://daily-dragon-bucket/hsk/` (not user-scoped, never modified at runtime)
+- These files are the ground truth the backend seeds from
 
-**Done when:** All 9 files are in S3 and manually spot-checked.
+> **Note:** The files contain hanzi only — no pinyin or English meanings. The `HskService` and vocabulary entries will need to either look up meanings at seed time (e.g. via dictionary API or OpenAI) or store hanzi-only entries and enrich lazily.
+
+**Done when:** ✅ All 7 files are in S3 and manually spot-checked.
 
 ---
 
@@ -175,13 +183,13 @@ The add word / remove word workflow is fully removed. The vocabulary page is rep
 ### Phase 2 -- HSK Seeding & Progression Logic
 > **~2-3 days | `daily-dragon-vocabulary-api`**
 
-- Add `HskRepository`: loads HSK level files from S3 `hsk-data/` prefix
+- Add `HskRepository`: loads HSK level files from S3 `hsk/` prefix
 - Add `HskService` with the following responsibilities:
-  - `get_hsk_words(level)` -- returns full word list for a given HSK level
-  - `get_unseeded_words(user_id, level)` -- diff between HSK level words and user's current vocabulary
-  - `seed_next_batch(user_id, level, batch_size=20)` -- adds the next N unseen HSK words to the user's vocabulary JSON with `hsk_level` and `source` fields; SRS fields initialised to defaults
-  - `get_level_progress(user_id, level)` -- returns `{ total, mastered, in_progress, new }` counts for a level
-  - `check_and_promote(user_id)` -- if >=80% of the current level is mastered, bumps `hsk_level` in settings and seeds the first batch of the next level
+  - `get_hsk_words(level)` -- returns the word list for the given level (unique words only, not cumulative)
+  - `get_unseeded_words(user_id, level)` -- diff between that level's words and the user's current vocabulary; straightforward because each file is already level-scoped
+  - `seed_next_batch(user_id, level, batch_size=20)` -- adds the next N unseen words for that level to the user's vocabulary JSON with `hsk_level` and `source` fields; SRS fields initialised to defaults
+  - `get_level_progress(user_id, level)` -- filters the user's vocabulary by `hsk_level == level` to return `{ total, mastered, in_progress, new }` counts
+  - `check_and_promote(user_id)` -- if >=80% of words tagged `hsk_level == current_level` are mastered, bumps `hsk_level` in settings and seeds the first batch of the next level
 - New endpoint:
   - `GET /daily-dragon/hsk/progress` -- returns mastery breakdown per level (consumed by the Progress page)
 - `check_and_promote` is called at the end of every batch review submission (existing `POST /daily-dragon/vocabulary/review` endpoint)
