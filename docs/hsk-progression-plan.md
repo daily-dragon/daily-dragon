@@ -1,6 +1,6 @@
 # HSK Progression & Automatic Advancement — Migration Plan
 
-> **Status:** Phase 0 complete — Phase 1 in progress  
+> **Status:** Phase 1 complete — Phase 2 in progress  
 > **Scope:** `daily-dragon-vocabulary-api`, `daily-dragon-openai-api`, `daily-dragon-ui`  
 > **Replaces:** Manual vocabulary management (add word / remove word)
 
@@ -159,11 +159,11 @@ The add word / remove word workflow is fully removed. The vocabulary page is rep
 
 ---
 
-### Phase 1 -- User Settings
-> **~1-2 days | `daily-dragon-vocabulary-api`**
+### ✅ Phase 1 -- User Settings
+> **COMPLETE | `daily-dragon-vocabulary-api`**
 
-- Add `SettingsRepository`: reads/writes `{user_id}_settings.json` from S3
-- Add `SettingsService`: wraps repository, provides defaults for new users
+- `SettingsRepository`: reads/writes `{user_id}_settings.json` from S3
+- `SettingsService`: wraps repository, provides defaults for new users
 - Settings schema:
   ```json
   {
@@ -171,12 +171,11 @@ The add word / remove word workflow is fully removed. The vocabulary page is rep
     "placement_completed": false
   }
   ```
-- New endpoints:
+- Endpoints delivered:
   - `GET /daily-dragon/settings` -- fetch current user's settings
   - `PATCH /daily-dragon/settings` -- update settings
 - Follows the exact same structural pattern as `VocabularyRepository` / `VocabularyService`
-
-**Done when:** A new user gets a default settings file on first call; an existing user can read and update their settings.
+- New user receives default settings file on first call; existing users can read and update their settings
 
 ---
 
