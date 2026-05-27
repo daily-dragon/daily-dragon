@@ -1,6 +1,6 @@
 # HSK Progression & Automatic Advancement — Migration Plan
 
-> **Status:** Phase 1 complete — Phase 2 in progress  
+> **Status:** Phase 2 complete — Phase 3 next  
 > **Scope:** `daily-dragon-vocabulary-api`, `daily-dragon-openai-api`, `daily-dragon-ui`  
 > **Replaces:** Manual vocabulary management (add word / remove word)
 
@@ -179,21 +179,26 @@ The add word / remove word workflow is fully removed. The vocabulary page is rep
 
 ---
 
-### Phase 2 -- HSK Seeding & Progression Logic
-> **~2-3 days | `daily-dragon-vocabulary-api`**
+### ✅ Phase 2 -- HSK Seeding & Progression Logic
+> **COMPLETE | `daily-dragon-vocabulary-api` | branch: `wire-level-progress`**
 
-- Add `HskRepository`: loads HSK level files from S3 `hsk/` prefix
-- Add `HskService` with the following responsibilities:
-  - `get_hsk_words(level)` -- returns the word list for the given level (unique words only, not cumulative)
-  - `get_unseeded_words(user_id, level)` -- diff between that level's words and the user's current vocabulary; straightforward because each file is already level-scoped
-  - `seed_next_batch(user_id, level, batch_size=20)` -- adds the next N unseen words for that level to the user's vocabulary JSON with `hsk_level` and `source` fields; SRS fields initialised to defaults
-  - `get_level_progress(user_id, level)` -- filters the user's vocabulary by `hsk_level == level` to return `{ total, mastered, in_progress, new }` counts
-  - `check_and_promote(user_id)` -- if >=80% of words tagged `hsk_level == current_level` are mastered, bumps `hsk_level` in settings and seeds the first batch of the next level
-- New endpoint:
-  - `GET /daily-dragon/hsk/progress` -- returns mastery breakdown per level (consumed by the Progress page)
-- `check_and_promote` is called at the end of every batch review submission (existing `POST /daily-dragon/vocabulary/review` endpoint)
+- `HskRepository` (`repository/hsk_repository.py`): reads `hsk/hsk{level}.json` from S3; raises `ValueError` on missing level, re-raises other `ClientError`s
+- `HskService` (`service/hsk_service.py`) with constants `MAX_HSK_LEVEL = 7`, `PROMOTION_THRESHOLD = 0.8`:
+  - `get_hsk_words(level)` -- delegates to `HskRepository`
+  - `get_unseeded_words(user_id, level)` -- set diff between HSK level words and existing vocabulary keys
+  - `seed_next_batch(user_id, level, batch_size=20)` -- slices the first N unseeded words, initialises SM-2 metadata via `SpacedRepetitionService.initialize_word_metadata()`, adds `hsk_level` field, merges into vocabulary and saves in a **single write**; returns 0 and skips write if nothing to seed
+  - `get_level_progress(user_id, level)` -- filters vocabulary by `hsk_level == level`; counts `mastered` (`interval >= 21`), `new` (`interval == 0`), `in_progress` (remainder); words without `hsk_level` are excluded
+  - `check_and_promote(user_id)` -- short-circuits at `MAX_HSK_LEVEL`; computes mastery ratio for current level; if `>= 0.80`, increments `hsk_level` in settings, saves, and immediately seeds first 20 words of the new level; returns `True` on promotion
+- New Pydantic models: `LevelProgress`, `HskProgressResponse`
+- New endpoint: `GET /daily-dragon/hsk/progress` -- calls `get_level_progress` for levels 1–7, returns `current_level` + per-level `{ total, mastered, in_progress, new }` breakdown
+- `POST /daily-dragon/vocabulary/reviews` -- `HskService` added as dependency; `check_and_promote` called unconditionally after every review batch (promotion is a side effect; review result always returned)
+- Tests added:
+  - `tests/repository/test_hsk_repository.py` — 4 tests (success, level 7 key, `NoSuchKey` → `ValueError`, other errors re-raised)
+  - `tests/service/test_hsk_service.py` — 15 tests across 5 classes covering all `HskService` methods
+  - `tests/test_hsk_endpoints.py` — 5 endpoint tests (progress shape, field presence, correct user ID, promotion side effect, review result unaffected)
+  - `tests/conftest.py` — `mock_hsk_service` fixture added; wired into `test_client` via `dependency_overrides`
 
-**Done when:** Submitting a successful review batch triggers progression checks; a user completing 80% of HSK 1 automatically receives HSK 2 words.
+**Done when:** ✅ Submitting a successful review batch triggers progression checks; a user completing 80% of HSK 1 automatically receives HSK 2 words.
 
 ---
 
