@@ -1,6 +1,6 @@
 # HSK Progression & Automatic Advancement — Migration Plan
 
-> **Status:** Phase 2 complete — Phase 3 next  
+> **Status:** Phases 0-2, 4, 5 complete — Phase 3 next  
 > **Scope:** `daily-dragon-vocabulary-api`, `daily-dragon-openai-api`, `daily-dragon-ui`  
 > **Replaces:** Manual vocabulary management (add word / remove word)
 
@@ -76,44 +76,47 @@ The add word / remove word workflow is fully removed. The vocabulary page is rep
 
 ### Removed
 
-| Component | Location |
-|---|---|
-| `POST /daily-dragon/vocabulary` -- add word | `vocabulary-api` |
-| `DEMETE /daily-dragon/vocabulary/{word}` -- remove word | `vocabulary-api` |
-| `VocabularyPage` | `daily-dragon-ui` |
-| `AddWordDialog` | `daily-dragon-ui` |
-| `RemoveWordDialog` | `daily-dragon-ui` |
-| `VocabularyList` | `daily-dragon-ui` |
-| Vocabulary nav link | `daily-dragon-ui` |
+| Component | Status | Location |
+|---|---|---|
+| `POST /daily-dragon/vocabulary` — add word | ✅ done | `vocabulary-api` |
+| `DELETE /daily-dragon/vocabulary/{word}` — remove word | ✅ done | `vocabulary-api` |
+| `VocabularyPage` | ✅ done | `daily-dragon-ui` |
+| `AddWordDialog` | ✅ done | `daily-dragon-ui` |
+| `RemoveWordDialog` | ✅ done | `daily-dragon-ui` |
+| `VocabularyList` | ✅ done | `daily-dragon-ui` |
+| Vocabulary nav link | ✅ done | `daily-dragon-ui` |
 
 ### Added
 
-| Component | Location |
-|---|---|
-| `GET/PATCH /daily-dragon/settings` | `vocabulary-api` |
-| `GET /daily-dragon/hsk/progress` | `vocabulary-api` |
-| `GET /daily-dragon/placement/words` | `vocabulary-api` |
-| `POST /daily-dragon/placement/submit` | `vocabulary-api` |
-| HSK seeding & progression service | `vocabulary-api` |
-| `hsk_level` + `source` fields on word entries | vocabulary S3 files |
-| `{user_id}_settings.json` in S3 | S3 vocabulary bucket |
-| Static `hsk/hsk1.json` ... `hsk7.json` in S3 | S3 (shared, read-only) |
-| `hsk_level` field in sentence generation request | `openai-api` |
-| `ProgressPage` | `daily-dragon-ui` |
-| `PlacementTestPage` | `daily-dragon-ui` |
-| First-login placement guard | `daily-dragon-ui` |
+| Component | Status | Location |
+|---|---|---|
+| `GET/PATCH /daily-dragon/settings` | ✅ done | `vocabulary-api` |
+| `GET /daily-dragon/hsk/progress` | ✅ done | `vocabulary-api` |
+| `GET /daily-dragon/placement/words` | ⏳ Phase 3 | `vocabulary-api` |
+| `POST /daily-dragon/placement/submit` | ⏳ Phase 3 | `vocabulary-api` |
+| HSK seeding & progression service | ✅ done | `vocabulary-api` |
+| `hsk_level` field on word entries | ✅ done | vocabulary S3 files |
+| `{user_id}_settings.json` in S3 | ✅ done | S3 vocabulary bucket |
+| Static `hsk/hsk1.json` ... `hsk7.json` in S3 | ✅ done | S3 (shared, read-only) |
+| `hsk_level` field in sentence generation request | ✅ done | `openai-api` |
+| `ProgressPage` | ✅ done | `daily-dragon-ui` |
+| `settingsService.js` / `hskService.js` | ✅ done | `daily-dragon-ui` |
+| `PlacementTestPage` | ⏳ Phase 3 | `daily-dragon-ui` |
+| First-login placement guard | ⏳ Phase 3 | `daily-dragon-ui` |
 
 ### Updated
 
-| Component | Change | Location |
-|---|---|---|
-| Word entry schema | Add `hsk_level` (int) and `source` ("hsk") fields | vocabulary S3 files |
-| `POST /practice/sentences` request | Add optional `hsk_level` field | `openai-api` |
-| Sentence generation prompt | Inject `${hskLevel}` into prompt template | `openai-api` |
-| `PracticePage` | Fetch settings; pass `hsk_level` to sentence request | `daily-dragon-ui` |
-| `Header` nav | "Vocabulary" --> "Progress" | `daily-dragon-ui` |
-| `/vocabulary` route | Redirect to `/progress` | `daily-dragon-ui` |
-| Review submission handler | Trigger `check_and_promote` after each batch | `vocabulary-api` |
+| Component | Change | Status | Location |
+|---|---|---|---|
+| Word entry schema | Add `hsk_level` (int) field | ✅ done | vocabulary S3 files |
+| `GET /daily-dragon/vocabulary/due` | Auto-seed from HSK when below limit | ✅ done | `vocabulary-api` |
+| `POST /practice/sentences` request | Add optional `hsk_level` field | ✅ done | `openai-api` |
+| Sentence generation prompt | Inject `${hskLevelInstruction}` into template | ✅ done | `openai-api` |
+| `App.jsx` | Fetch settings on load; pass `hskLevel` to Practice | ✅ done | `daily-dragon-ui` |
+| `Header` | Display HSK level badge; "Vocabulary" → "Progress" | ✅ done | `daily-dragon-ui` |
+| `aiService.js` | Pass `hsk_level` in sentence request | ✅ done | `daily-dragon-ui` |
+| `renderSentence` | Extracted to shared module; used by Practice and Review | ✅ done | `daily-dragon-ui` |
+| Review submission handler | Trigger `check_and_promote` after each batch | ✅ done | `vocabulary-api` |
 
 ---
 
@@ -180,25 +183,28 @@ The add word / remove word workflow is fully removed. The vocabulary page is rep
 ---
 
 ### ✅ Phase 2 -- HSK Seeding & Progression Logic
-> **COMPLETE | `daily-dragon-vocabulary-api` | branch: `wire-level-progress`**
+> **COMPLETE | `daily-dragon-vocabulary-api` | branch: `wire-level-progress` → merged to main**
 
 - `HskRepository` (`repository/hsk_repository.py`): reads `hsk/hsk{level}.json` from S3; raises `ValueError` on missing level, re-raises other `ClientError`s
-- `HskService` (`service/hsk_service.py`) with constants `MAX_HSK_LEVEL = 7`, `PROMOTION_THRESHOLD = 0.8`:
+- `HskService` (`service/hsk_service.py`) with constants `MAX_HSK_LEVEL = 7`, `PROMOTION_THRESHOLD = 0.8`, `SEED_BATCH_SIZE = 20`:
   - `get_hsk_words(level)` -- delegates to `HskRepository`
   - `get_unseeded_words(user_id, level)` -- set diff between HSK level words and existing vocabulary keys
-  - `seed_next_batch(user_id, level, batch_size=20)` -- slices the first N unseeded words, initialises SM-2 metadata via `SpacedRepetitionService.initialize_word_metadata()`, adds `hsk_level` field, merges into vocabulary and saves in a **single write**; returns 0 and skips write if nothing to seed
-  - `get_level_progress(user_id, level)` -- filters vocabulary by `hsk_level == level`; counts `mastered` (`interval >= 21`), `new` (`interval == 0`), `in_progress` (remainder); words without `hsk_level` are excluded
+  - `seed_next_batch(user_id, level, batch_size=SEED_BATCH_SIZE)` -- slices the first N unseeded words, initialises SM-2 metadata via `SpacedRepetitionService.initialize_word_metadata()`, adds `hsk_level` field, merges into vocabulary and saves in a **single write**; returns 0 and skips write if nothing to seed; accepts dynamic `batch_size`
+  - `seed_words(user_id, count)` -- convenience wrapper: reads current `hsk_level` from settings, delegates to `seed_next_batch`; used by `VocabularyService` to top up the due-words queue
+  - `get_level_progress(user_id, level)` -- filters vocabulary by `hsk_level == level`; counts `mastered` (`interval >= 21`), `new` (`interval == 0`), `in_progress` (remainder); words without `hsk_level` are excluded; `total` is taken from `HSK_LEVEL_WORD_COUNT` (static dict), not the seeded count — ensuring the mastery ratio in `check_and_promote` is computed against the whole level, not just the words introduced so far
   - `check_and_promote(user_id)` -- short-circuits at `MAX_HSK_LEVEL`; computes mastery ratio for current level; if `>= 0.80`, increments `hsk_level` in settings, saves, and immediately seeds first 20 words of the new level; returns `True` on promotion
+- `HSK_LEVEL_WORD_COUNT = {1: 300, 2: 197, 3: 493, 4: 990, 5: 1579, 6: 1777, 7: 5562}` — hardcoded static dict used by `get_level_progress`; derived from the actual JSON files in S3
 - New Pydantic models: `LevelProgress`, `HskProgressResponse`
 - New endpoint: `GET /daily-dragon/hsk/progress` -- calls `get_level_progress` for levels 1–7, returns `current_level` + per-level `{ total, mastered, in_progress, new }` breakdown
 - `POST /daily-dragon/vocabulary/reviews` -- `HskService` added as dependency; `check_and_promote` called unconditionally after every review batch (promotion is a side effect; review result always returned)
+- `GET /daily-dragon/vocabulary/due` (due words) -- auto-seeds from current HSK level when due-word count is below the limit; shortfall calculated as `limit - len(due_words)`; calls `seed_words(user_id, shortfall)` and re-fetches if any words were seeded
 - Tests added:
   - `tests/repository/test_hsk_repository.py` — 4 tests (success, level 7 key, `NoSuchKey` → `ValueError`, other errors re-raised)
-  - `tests/service/test_hsk_service.py` — 15 tests across 5 classes covering all `HskService` methods
+  - `tests/service/test_hsk_service.py` — 15+ tests across 5 classes covering all `HskService` methods including `seed_words`
   - `tests/test_hsk_endpoints.py` — 5 endpoint tests (progress shape, field presence, correct user ID, promotion side effect, review result unaffected)
   - `tests/conftest.py` — `mock_hsk_service` fixture added; wired into `test_client` via `dependency_overrides`
 
-**Done when:** ✅ Submitting a successful review batch triggers progression checks; a user completing 80% of HSK 1 automatically receives HSK 2 words.
+**Done when:** ✅ Submitting a successful review batch triggers progression checks; a user completing 80% of HSK 1 automatically receives HSK 2 words; due-words endpoint auto-seeds when vocabulary runs low.
 
 ---
 
@@ -215,51 +221,53 @@ The add word / remove word workflow is fully removed. The vocabulary page is rep
 
 ---
 
-### Phase 4 -- Sentence Generation Update
-> **~0.5 days | `daily-dragon-openai-api`**
+### ✅ Phase 4 -- Sentence Generation Update
+> **COMPLETE | `daily-dragon-openai-api`**
 
-- `POST /daily-dragon/practice/sentences` request body gains an optional `hsk_level` field
-- The `get_sentences_for_translation` prompt template is updated to inject `hsk_level` as a variable
-- The LLM is instructed to keep surrounding vocabulary and grammar complexity appropriate for the stated HSK level
-- No structural changes to the response -- same `SentencesResponse` model
+- `WordsList` model gains `hsk_level: int | None = None` optional field
+- `get_sentences_for_translation(words, hsk_level)` conditionally builds an `hsk_instruction` string injected as `${hskLevelInstruction}` in the prompt template; empty string when `hsk_level` is `None`
+- Prompt template updated to include the `${hskLevelInstruction}` placeholder
+- No structural changes to the response — same `SentencesResponse` model
+- Tests updated in `test_openai_api_app.py` and `test_openai_service.py`
 
-**Done when:** Sentence generation requests include level context and the LLM adjusts difficulty accordingly.
+**Done when:** ✅ Sentence generation requests include level context and the LLM adjusts difficulty accordingly.
 
 ---
 
-### Phase 5 -- UI Overhaul
-> **~2-3 days | `daily-dragon-ui`**
+### ✅ Phase 5 -- UI Overhaul
+> **COMPLETE (placement test UI deferred to Phase 3) | `daily-dragon-ui`**
 
-#### Remove
-- `VocabularyPage`, `AddWordDialog`, `RemoveWordDialog`, `VocabularyList`
-- All vocabulary add/delete service calls
+#### ✅ Removed
+- `VocabularyPage`, `AddWordDialog`, `RemoveWordDialog`, `VocabularyList` and their tests
+- `addWord`, `deleteWord`, `fetchVocabulary` from `vocabularyService.js`
 - Vocabulary nav link and route
 
-#### Add: `ProgressPage` (`/progress`)
-- Calls `GET /daily-dragon/hsk/progress`
-- Shows per-level breakdown: total words, mastered, in-progress, new
-- Visual progress bars per HSK level
+#### ✅ Added: `ProgressPage` (`/progress`)
+- `hskService.js` — calls `GET /daily-dragon/hsk/progress`
+- `settingsService.js` — `getSettings` / `updateSettings` calling `GET|PATCH /daily-dragon/settings`
+- `ProgressPage` shows per-level breakdown: total words, mastered, in-progress, new
+- `ProgressBar` component renders stacked mastered + in-progress percentages visually
 - Current active level highlighted prominently
+- Tests: `ProgressPage.test.jsx`, `hskService.test.js`, `settingsService.test.js`
 
-#### Add: `PlacementTestPage` (`/placement`)
-- Shown automatically to new users on first login (when `placement_completed: false`)
-- Binary card UI: show hanzi, user taps "Know it" / "Don't know it"
-- On submit, calls `POST /daily-dragon/placement/submit`
-- Redirects to Practice on completion
-- Skippable -- skip defaults the user to HSK 1
+#### ⏳ Deferred: `PlacementTestPage` (`/placement`)
+- Depends on Phase 3 backend endpoints; not yet implemented
+- Will be added once `GET /daily-dragon/placement/words` and `POST /daily-dragon/placement/submit` exist
 
-#### Update: `PracticePage`
-- On load, fetch settings to get `hsk_level`
-- Pass `hsk_level` alongside `words` when calling `/practice/sentences`
-- Remove any references to manual add/remove vocabulary
+#### ✅ Updated: `PracticePage` / `App`
+- `App.jsx` fetches settings on load; `hskLevel` state threaded down to `Practice` and `Header`
+- `Header` displays HSK level badge
+- `aiService.js` passes `hsk_level` in the sentence generation request body
+- `renderSentence` extracted to shared module `practice/renderSentence.jsx`; consumed by both `PracticePage` and `ReviewPage`
 
-#### Update: routing & navigation
-- `/vocabulary` --> redirect to `/progress`
-- Add `/placement` route
-- Add first-login guard: if `!placement_completed`, redirect to `/placement` before allowing access to Practice
-- Swap "Vocabulary" nav link for "Progress"
+#### ✅ Updated: routing & navigation
+- `/progress` route added; "Vocabulary" nav link replaced with "Progress"
+- `TextEncoder` polyfill added to `setupTests.js` for router-using component tests
 
-**Done when:** A new user lands on placement test; an existing user sees their HSK progress; practice sessions use level-aware sentence generation.
+#### ⏳ Deferred: first-login guard
+- Redirect to `/placement` when `placement_completed: false` — deferred until Phase 3 is done
+
+**Done when:** ✅ Existing users see their HSK progress; practice sessions use level-aware sentence generation. Placement test UI pending Phase 3.
 
 ---
 
@@ -280,17 +288,18 @@ The add word / remove word workflow is fully removed. The vocabulary page is rep
 ## 6. Timeline Estimate
 
 ```
-Phase 0  | HSK data files prepared & uploaded to S3            | ~1-2 days
-Phase 1  | User settings file + endpoints                       | ~1-2 days
-Phase 2  | HSK seeding + progression logic                     | ~2-3 days
-Phase 3  | Placement test endpoints                             | ~1-2 days
-Phase 4  | OpenAI prompt gains hsk_level                       | ~0.5 days
-Phase 5  | UI: remove vocab mgmt, add Progress & Placement    | ~2-3 days
-Phase 6  | Cleanup, tests, integration verification            | ~1 day
-─────────+|Total   |                                                        | ~9-14 days
+Phase 0  ✅ | HSK data files prepared & uploaded to S3            | complete
+Phase 1  ✅ | User settings file + endpoints                       | complete
+Phase 2  ✅ | HSK seeding + progression logic                     | complete
+Phase 3  ⏳ | Placement test endpoints                             | ~1-2 days
+Phase 4  ✅ | OpenAI prompt gains hsk_level                       | complete
+Phase 5  ✅ | UI: remove vocab mgmt, add Progress page            | complete (placement UI in Phase 3)
+Phase 6  ⏳ | Cleanup, tests, integration verification            | ~1 day
+────────────+──────────────────────────────────────────────────────+──────────
+Remaining                                                          | ~2-3 days
 ```
 
-Phases 1 and 2 are the critical path -- everything else depends on settings and seeding being in place.
+Phase 3 (placement test) is the only remaining blocker — Phase 6 cleanup follows after.
 
 ---
 

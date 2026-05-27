@@ -1,6 +1,6 @@
 # Daily Dragon
 
-Language-learning platform that dynamically generates translation sentences from a user's personal vocabulary using AI. Focus is active translation, not passive recognition.
+Mandarin language-learning platform with an HSK-structured curriculum. Words are seeded from New HSK (2021) levels 1-7 via SRS; the LLM generates translation sentences at the user's current level. Focus is active translation, not passive recognition. Manual vocabulary management has been removed.
 
 ## This repo
 
