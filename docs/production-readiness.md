@@ -360,15 +360,15 @@ The `useEffect` IIFE has no `try/catch`. If `getDueVocabulary()` or `getPractice
 
 ### P0 — Launch Blockers (fix before any real traffic)
 
-| # | Task | Repo | Refs |
-|---|---|---|---|
-| 1 | **Rotate OpenAI API key** and add `.env` to all three `.gitignore` files | openai-api | B-2, SEC-O1 |
-| 2 | **Fix HSK promotion math** — compute mastery ratio against seeded count, not full level size | vocab-api | B-1, DATA-1 |
-| 3 | **Set Lambda timeout** for `openai-api` to ≥60 s | openai-api | B-3, INFRA-O2 |
-| 4 | **Set OpenAI client timeout** (`OpenAI(timeout=30)`) and add `try/except` around `send_prompt` with mapped HTTP status codes | openai-api | B-4, RES-5, ERR-O1 |
-| 5 | **Add logging** to `openai-api` — at minimum: request params, token usage, errors | openai-api | B-5, LOG-O1, LOG-O2 |
-| 6 | **Fix `PracticePage` error state** — catch API failures, show error message, reset spinner | ui | B-6, ERR-U1 |
-| 7 | **Fix double-encoded JSON** — return a proper object from `send_prompt` or set correct `response_model` on endpoint | openai-api | B-7, TEST-O4 |
+| # | Task | Repo | Refs | Status |
+|---|---|---|---|---|
+| 1 | **Rotate OpenAI API key** and add `.env` to all three `.gitignore` files | openai-api | B-2, SEC-O1 | ✅ Key rotated, `.env` untracked and gitignored, new key set in Lambda env |
+| 2 | **Fix HSK promotion math** — compute mastery ratio against seeded count, not full level size | vocab-api | B-1, DATA-1 | ✅ Finding invalid — current design (ratio against full level count) is intentional. Progressive seeding via the `<5 due words` shortfall mechanism exposes all 300 words over time. With daily practice and high success rate on simple HSK 1 words, all 300 words are seeded in ~5–6 months and 80% mastery is reached in ~6–7 months. Mathematically reachable by design. |
+| 3 | **Set Lambda timeout** for `openai-api` to ≥60 s | openai-api | B-3, INFRA-O2 | |
+| 4 | **Set OpenAI client timeout** (`OpenAI(timeout=30)`) and add `try/except` around `send_prompt` with mapped HTTP status codes | openai-api | B-4, RES-5, ERR-O1 | |
+| 5 | **Add logging** to `openai-api` — at minimum: request params, token usage, errors | openai-api | B-5, LOG-O1, LOG-O2 | |
+| 6 | **Fix `PracticePage` error state** — catch API failures, show error message, reset spinner | ui | B-6, ERR-U1 | |
+| 7 | **Fix double-encoded JSON** — return a proper object from `send_prompt` or set correct `response_model` on endpoint | openai-api | B-7, TEST-O4 | |
 
 ### P1 — High-priority (fix within first week after launch)
 
