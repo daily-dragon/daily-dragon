@@ -364,11 +364,11 @@ The `useEffect` IIFE has no `try/catch`. If `getDueVocabulary()` or `getPractice
 |---|---|---|---|---|
 | 1 | **Rotate OpenAI API key** and add `.env` to all three `.gitignore` files | openai-api | B-2, SEC-O1 | ✅ Key rotated, `.env` untracked and gitignored, new key set in Lambda env |
 | 2 | **Fix HSK promotion math** — compute mastery ratio against seeded count, not full level size | vocab-api | B-1, DATA-1 | ✅ Finding invalid — current design (ratio against full level count) is intentional. Progressive seeding via the `<5 due words` shortfall mechanism exposes all 300 words over time. With daily practice and high success rate on simple HSK 1 words, all 300 words are seeded in ~5–6 months and 80% mastery is reached in ~6–7 months. Mathematically reachable by design. |
-| 3 | **Set Lambda timeout** for `openai-api` to ≥60 s | openai-api | B-3, INFRA-O2 | |
-| 4 | **Set OpenAI client timeout** (`OpenAI(timeout=30)`) and add `try/except` around `send_prompt` with mapped HTTP status codes | openai-api | B-4, RES-5, ERR-O1 | |
-| 5 | **Add logging** to `openai-api` — at minimum: request params, token usage, errors | openai-api | B-5, LOG-O1, LOG-O2 | |
-| 6 | **Fix `PracticePage` error state** — catch API failures, show error message, reset spinner | ui | B-6, ERR-U1 | |
-| 7 | **Fix double-encoded JSON** — return a proper object from `send_prompt` or set correct `response_model` on endpoint | openai-api | B-7, TEST-O4 | |
+| 3 | **Set Lambda timeout** for `openai-api` to ≥60 s | openai-api | B-3, INFRA-O2 | (AWS console) Timeout set manually — not codified in IaC |
+| 4 | **Set OpenAI client timeout** (`OpenAI(timeout=30)`) and add `try/except` around `send_prompt` with mapped HTTP status codes | openai-api | B-4, RES-5, ERR-O1 | (AWS console) Lambda timeout set manually. In code: `try/except` added; `OpenAI(timeout=...)` still missing from `openai_service.py:20`; HTTP status mapping (RateLimitError → 429 etc.) not done |
+| 5 | **Add logging** to `openai-api` — at minimum: request params, token usage, errors | openai-api | B-5, LOG-O1, LOG-O2 | ✅ `logging_config.py` added with `get_logger`; request params, token usage (prompt/completion/total), latency, and errors logged in `openai_service.py` and `openai_api_app.py`; logging verified by tests with `caplog` |
+| 6 | **Fix `PracticePage` error state** — catch API failures, show error message, reset spinner | ui | B-6, ERR-U1 | ✅ `loadPractice` wrapped in `try/catch/finally` — spinner always resets, error message + retry button rendered on failure; `doSubmit` also guarded with toaster on submission error |
+| 7 | **Fix double-encoded JSON** — return a proper object from `send_prompt` or set correct `response_model` on endpoint | openai-api | B-7, TEST-O4 | ✅ `send_prompt` returns `response.choices[0].message.parsed` (typed via TypeVar); both endpoints declare `response_model`; `JSON.parse` workarounds removed from `PracticePage.jsx` and `aiService.js`; tests updated |
 
 ### P1 — High-priority (fix within first week after launch)
 
