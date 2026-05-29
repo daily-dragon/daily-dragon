@@ -29,23 +29,21 @@
 
 | Area | vocabulary-api | openai-api | ui | Overall |
 |---|---|---|---|---|
-| Security | 🟡 Medium | 🔴 Critical | 🟡 Medium | 🔴 |
-| Error Handling | 🟡 Medium | 🔴 Critical | 🟡 Medium | 🔴 |
-| Logging & Observability | 🟡 Medium | 🔴 Critical | 🟢 N/A | 🔴 |
+| Security | 🟡 Medium | 🟡 Medium | 🟡 Medium | 🟡 |
+| Error Handling | 🟡 Medium | 🟡 Medium | 🟡 Medium | 🟡 |
+| Logging & Observability | 🟡 Medium | 🟡 Medium | 🟢 N/A | 🟡 |
 | Testing | 🔴 Gaps | 🔴 Broken | 🔴 Gaps | 🔴 |
-| Infrastructure / CI | 🟡 Medium | 🔴 No IaC | 🟡 Outdated | 🔴 |
-| Resilience / Data Integrity | 🔴 Critical | 🟡 Medium | 🟡 Medium | 🔴 |
+| Infrastructure / CI | 🟡 Medium | 🟡 Medium | 🟡 Outdated | 🟡 |
+| Resilience / Data Integrity | 🟡 Medium | 🟡 Medium | 🟡 Medium | 🟡 |
 | Performance | 🟡 Medium | 🟢 Low risk | 🟡 Medium | 🟡 |
 | UX / Usability | 🟢 N/A | 🟢 N/A | 🟡 Medium | 🟡 |
 | Configuration Management | 🟡 Medium | 🟡 Medium | 🟡 Medium | 🟡 |
 
-The most damaging issues are:
+The most damaging remaining issues are:
 
-- **Core feature broken** — HSK level promotion is mathematically unreachable via normal use (`vocabulary-api`)
-- **OpenAI key committed to git** — must be rotated before any further pushes (`openai-api`)
-- **Zero error handling + zero logging** in the OpenAI service — the API is a black box in production (`openai-api`)
-- **Lambda timeout** is almost certainly the AWS default of 3 s — GPT-4o calls take 5–30 s (`openai-api`)
-- **Infinite spinner** when any API call fails — no error state in `PracticePage` (`ui`)
+- **Incomplete error handling in OpenAI service** — `OpenAI(timeout=...)` not set (SDK default 600 s exhausts Lambda budget); no HTTP status mapping (`RateLimitError` → 429, `AuthenticationError` → 502) (`openai-api`)
+- **Lambda timeout set manually, not in IaC** — 60 s configured in console only; a stack redeploy silently resets it to 3 s (`openai-api`)
+- **Test suite broken or absent across all three repos** — CI gives false confidence; error paths, auth flows, and core display components are uncovered (`all`)
 
 ---
 
