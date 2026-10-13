@@ -167,9 +167,11 @@ Architecture diagrams are maintained in the [`/diagrams`](./diagrams) directory 
 ## Roadmap
 
 - [x] **Learn page** -- a pre-practice study carousel that shows each due word with its hanzi, pinyin, English meaning, and an AI-generated example sentence before translation practice begins
+- [x] **Deep Practice** -- a single-word focus mode accessible from the Learn page carousel; generates 5 sentences using one word in different grammatical roles and contexts for concentrated practice without affecting SRS scores
+- [ ] **Trouble Words** -- surface the words a user repeatedly fails on a dedicated page, with a one-tap entry into Deep Practice for each; increments `failure_count` on any review with quality < 5; endpoint returns words where `failure_count > 0` and `interval < 21`, sorted by `failure_count` descending
 - [ ] **Hints system** -- a "?" button next to each sentence that reveals a contextual hint (e.g. *"uses the word for 'to run'"*) rather than giving away the answer directly
 - [ ] **Sentence type variety** -- intentionally vary generated sentences across questions, negations, past/future tense, and other structures to broaden grammar practice
 - [ ] **Usage analytics & admin view** -- a page showing vocabulary grouped by user knowledge level, session frequency, and accuracy trends over time
 - [ ] **Progress tracking & streaks** -- daily streak counter, session history, and words-mastered count to support habit formation
 - [ ] **Migrate vocabulary storage to a database** -- replace per-user S3 files with a proper DB (e.g. DynamoDB) to enable querying, spaced repetition, and user settings storage
-- Y[] ] **Multi-language support** -- allow users to practice translation into languages other than their first; mainly a vocabulary API and prompt concern
+- [ ] **Multi-language support** -- allow users to practice translation into languages other than their first; mainly a vocabulary API and prompt concern
